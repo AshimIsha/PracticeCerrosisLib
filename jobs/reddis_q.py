@@ -18,12 +18,13 @@ job_queue = Queue("test_q", connection = celery_conection)
 
 @celery_conection.task    
 def make_queue(data):
+    #Запрос на predict отправляем модели
     response = requests.post(MODEL_URL, json = data)
     if response.status_code == 200:
         res = response.json()["prediction"][0]
     else:
         res = None
+    #Запрос с результатом отправляем на бэк    
     requests.post(API_URL, json = res)   
     
-    #job_instance = job_queue.enqueue(test, num)
     return res
