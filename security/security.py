@@ -19,41 +19,32 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
+#Получаем хэш пароля
 def get_hash(password: str):
     return context.hash(password)
 
-
-def create_token(data:dict, expires_delta:Optional[timedelta]=None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire=datetime.utcnow()+expires_delta
-    else:
-        expire = datetime.utcnow()+timedelta(minutes=15)
-    to_encode.update({"exp":expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGO)
-    return encoded_jwt
-
+#Проверка пароля
 def verify_password(password, hashed_password):
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
-
+#Хэшируем пароль
 def hash_password(password):
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     return hashed_password.decode("utf-8")
-
+#Найти пользователя по никнейму
 def get_user_by_username(username, session=get_connection()):
     return session.query(User).filter_by(username=username).first()
-
+#Получить счет транзкции по id пользователя
 def get_check_by_user(id, session=get_connection()):
     return session.query(Check).filter_by(user_id=id).first()
 
-
+#Аутентификация пользователя
 def authenticate_user(username, password, session=get_connection()):
     user = session.query(User).filter(User.username == username).first()
     if user and verify_password(password, user.hashed_password):
         return user
     return None
 
-
+#Создание токена
 def create_access_token(data, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -64,7 +55,7 @@ def create_access_token(data, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGO)
     return encoded_jwt
 
-
+#Текущий пользователь по токену
 def get_current_user(token):
     if token is None:
         token = Depends(oauth2_scheme)
@@ -84,7 +75,7 @@ def get_current_user(token):
         raise credentials_exception
     return username
 
-
+#Создать пользователя
 def create_user(username, password, wallet, age, session=get_connection()):
     new_user = User(username=username, hashed_password=hash_password(password), wallet=wallet, age=age)
     session.add(new_user)
@@ -93,11 +84,11 @@ def create_user(username, password, wallet, age, session=get_connection()):
     session.add(new_check)
     commit(session)
     return new_user
-
+#Создать транзакцию
 def create_check(id, cost):
     new_bill = Check(user_id=id, cost=cost)
     return new_bill
-
+#Обновить транзакцию
 def update_check(id, new_cost, session=get_connection()):
     try:
         check = session.query(Check).get(id)
